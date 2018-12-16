@@ -336,6 +336,131 @@ bool PathFinder::isIllegle(int x, int y)
 }
 
 
+Robot::Robot(string d) : dir(d)
+{
+	ifstream mapFileStream("./" + dir + "/floor.data");
+	string line;
+
+	getline(mapFileStream, line);
+	istringstream iss(line);
+	iss >> rows >> cols >> battery;
+	o_maze = new int *[rows];
+	v_maze = new int *[rows];
+	for (int i = 0; i < rows; ++i)
+	{
+		o_maze[i] = new int[cols];
+		v_maze[i] = new int[cols];
+	}
+
+	int flag;
+	for (int i = 0; i < rows; ++i)
+	{
+		getline(mapFileStream, line);
+		istringstream iss(line);
+		for (int j = 0; j < cols; ++j)
+		{
+			if (iss >> flag)
+			{
+				o_maze[i][j] = flag;
+				v_maze[i][j] = flag;
+
+				if (flag == EMPTY)
+				{
+					uv_positions.insert(Position(i, j));
+				}
+			}
+			else
+			{
+				o_maze[i][j] = EMPTY;
+				v_maze[i][j] = EMPTY;
+				initX = i;
+				initY = j;
+				iss.clear();
+				iss.ignore();
+			}
+		}
+	}
+}
+
+vector<Position> tryOnce(int **maze, int rows, int cols, int sx, int sy, int ex, int ey)
+{
+	PathFinder pf(maze, rows, cols);
+	pf.setStartEnd(sx, sy, ex, ey);
+	if (pf.searchPath())
+	{
+		return pf.generatePath();
+	}
+	return vector<Position>();
+}
+
+void Robot::run()
+{
+	vector<Position> all_path;
+	Position start(initX, initY);
+	set<Position>::iterator end;
+	while (!uv_positions.empty())
+	{
+		int r = rand() % uv_positions.size();
+		end = uv_positions.begin();
+		while (r--)
+		{
+			end++;
+		}
+
+		vector<Position> vec1, vec2;
+		vec1 = tryOnce(v_maze, rows, cols, start.x, start.y, end->x, end->y);
+		if (vec1.size() == 0)
+			vec1 = tryOnce(o_maze, rows, cols, start.x, start.y, end->x, end->y);
+		vec2 = tryOnce(v_maze, rows, cols, end->x, end->y, initX, initY);
+		if (vec2.size() == 0)
+			vec2 = tryOnce(o_maze, rows, cols, end->x, end->y, initX, initY);
+
+		if (vec1.size() == 0 || vec2.size() == 0 || vec1.size() + vec2.size() - 2 > battery)
+		{
+			continue;
+		}
+
+		for (vector<Position>::iterator iter = vec1.begin(); iter != vec1.end(); ++iter)
+		{
+			v_maze[iter->x][iter->y] = PATH;
+		}
+		for (vector<Position>::iterator iter = vec2.begin(); iter != vec2.end(); ++iter)
+		{
+			v_maze[iter->x][iter->y] = PATH;
+		}
+
+		for (set<Position>::iterator iter = uv_positions.begin(); iter != uv_positions.end();)
+		{
+			if (PATH == v_maze[iter->x][iter->y])
+				iter = uv_positions.erase(iter);
+			else
+				iter++;
+		}
+
+		all_path.insert(all_path.end(), vec1.begin(), vec1.end() - 1);
+		all_path.insert(all_path.end(), vec2.begin(), vec2.end());
+		start = all_path[all_path.size() - 2];
+	}
+	all_path.erase(all_path.begin());
+
+	ofstream outfile("./" + dir + "/final.path");
+	outfile << all_path.size() << endl;
+	for (vector<Position>::iterator iter = all_path.begin(); iter != all_path.end(); ++iter)
+	{
+		outfile << iter->x << " " << iter->y << endl;
+	}
+}
+
+Robot::~Robot()
+{
+	for (int i = 0; i < rows; ++i)
+	{
+		delete[] o_maze[i];
+		delete[] v_maze[i];
+	}
+	delete[] o_maze;
+	delete[] v_maze;
+}
 
 
 int main(int argc, char *argv[])
@@ -346,6 +471,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-
+	Robot robot(argv[1]);
+	robot.run();
 	return 0;
 }
