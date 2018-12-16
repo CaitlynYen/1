@@ -280,6 +280,62 @@ bool PathFinder::searchPath()
 	return false;
 }
 
+vector<Position> PathFinder::generatePath()
+{
+	vector<Position> result;
+
+	Node *nodeChild = endNode;
+	Node *nodeParent = endNode->father;
+	do
+	{
+		m_path[nodeChild->x][nodeChild->y] = PATH;
+		result.push_back(Position(nodeChild->x, nodeChild->y));
+
+		nodeChild = nodeParent;
+		nodeParent = nodeParent->father;
+	} while (nodeChild != startNode);
+
+	m_path[startNode->x][startNode->y] = PATH;
+	result.push_back(Position(nodeChild->x, nodeChild->y));
+	reverse(result.begin(), result.end());
+
+	return result;
+}
+
+void PathFinder::printPath() {
+	for (int i = 0; i < m_rows; ++i)
+	{
+		for (int j = 0; j < m_cols; ++j)
+		{
+			if (PATH == m_path[i][j])
+			{
+				cout << "# ";
+			}
+			else
+			{
+				cout << m_maze[i][j] << " ";
+			}
+		}
+		cout << endl;
+	}
+}
+
+int PathFinder::judge(int x, int y)
+{
+	return 10 * (abs(m_endX - x) + abs(m_endY - y));
+}
+
+bool PathFinder::isIllegle(int x, int y)
+{
+	if (x >= 0 && x < m_rows &&
+		y >= 0 && y < m_cols &&
+		m_maze[x][y] == EMPTY)
+		return true;
+	else
+		return false;
+}
+
+
 
 
 int main(int argc, char *argv[])
@@ -291,4 +347,5 @@ int main(int argc, char *argv[])
 	}
 
 
+	return 0;
 }
